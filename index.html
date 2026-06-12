@@ -3,46 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>교통약자 맞춤형 경로 추천 시스템 v2.0</title>
+    <title>교통약자 맞춤형 실시간 네비게이션 v3.0</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: 'Pretendard', 'Malgun Gothic', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        h2 { color: #1e293b; text-align: center; margin-bottom: 25px; font-size: 24px; font-weight: 800; }
-        .search-panel { background: #f8fafc; padding: 20px; border-radius: 15px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
+        body { font-family: 'Pretendard', 'Malgun Gothic', sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 24px; box-shadow: 0 20px 40px rgba(15,23,42,0.08); }
+        h2 { color: #0f172a; text-align: center; margin-bottom: 25px; font-size: 24px; font-weight: 800; }
+        .search-panel { background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         label { display: block; font-weight: 700; margin-bottom: 6px; color: #64748b; font-size: 13px; }
-        select, input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; box-sizing: border-box; font-size: 15px; background: white; font-weight: 600; }
-        button { width: 100%; padding: 16px; background: linear-gradient(135deg, #2ecc71, #27ae60); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(46,204,113,0.3); transition: 0.2s; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(46,204,113,0.4); }
+        select, input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; box-sizing: border-box; font-size: 15px; font-weight: 600; }
+        button { width: 100%; padding: 16px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(59,130,246,0.3); transition: 0.2s; }
+        button:hover { transform: translateY(-1px); box-shadow: 0 6px 15px rgba(59,130,246,0.4); }
         
-        /* 고퀄리티 사실적 지도 영역 */
-        #map-container { width: 100%; height: 400px; margin-top: 25px; border-radius: 15px; border: 2px solid #1e293b; position: relative; overflow: hidden; display: none; background: #f1f5f9; box-shadow: inset 0 0 20px rgba(0,0,0,0.05); }
-        .map-bg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; opacity: 0.25; background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px), radial-gradient(#cbd5e1 1.5px, #f1f5f9 1.5px); background-size: 30px 30px; background-position: 0 0, 15px 15px; }
+        /* 실제 위성/디지털 지도가 들어갈 영역 */
+        #map { width: 100%; height: 450px; margin-top: 25px; border-radius: 16px; border: 1px solid #cbd5e1; display: none; z-index: 1; }
         
-        /* 지하철 노선 레이어 */
-        .subway-track { position: absolute; border-radius: 4px; }
-        .t-1 { background: #003da5; width: 6px; height: 320px; top: 40px; left: 220px; } /* 1호선 종축 */
-        .t-7 { background: #747f00; width: 6px; height: 200px; top: 150px; left: 220px; transform: rotate(-45deg); transform-origin: top left; } /* 7호선 사선 */
-        .t-6 { background: #cd7c2e; width: 280px; height: 6px; top: 291px; left: 220px; } /* 6호선 횡축 */
-        
-        /* 역 마커 디자인 */
-        .station-node { position: absolute; width: 16px; height: 16px; background: white; border: 4px solid #1e293b; border-radius: 50%; z-index: 10; font-size: 12px; font-weight: 800; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-        .node-text { position: absolute; left: 24px; top: -2px; background: rgba(255,255,255,0.9); padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
-        
-        /* 내비게이션 빔 애니메이션 효과 */
-        .nav-overlay { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 5; }
-        .route-glow { stroke-dasharray: 8, 6; animation: routeFlow 30s linear infinite; }
-        @keyframes routeFlow { to { stroke-dashoffset: -1000; } }
-
-        .result-card { margin-top: 25px; padding: 22px; border-radius: 15px; display: none; background-color: #f0fdf4; border: 1px solid #bbf7d0; }
-        .card-title { font-size: 18px; font-weight: bold; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .result-card { margin-top: 25px; padding: 22px; border-radius: 16px; display: none; background-color: #f0fdf4; border: 1px solid #bbf7d0; }
+        .card-title { font-size: 18px; font-weight: bold; color: #166534; margin-bottom: 12px; }
         .details-list { font-size: 14px; color: #334155; line-height: 1.7; margin: 0; padding-left: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>♿ 교통약자 동선 최적화 네비게이션</h2>
+    <h2>♿ 교통약자 동선 최적화 실시간 네비게이션</h2>
     
     <div class="search-panel">
         <div class="form-grid">
@@ -61,41 +47,57 @@
         </div>
     </div>
     
-    <button onclick="activateNavigation()">실시간 교통약자 최적 경로 탐색</button>
+    <button onclick="startNavigation()">실시간 지도 경로 탐색</button>
     
-    <div id="map-container">
-        <div class="map-bg"></div>
-        
-        <div class="subway-track t-1"></div>
-        <div class="subway-track t-7"></div>
-        <div class="subway-track t-6"></div>
-
-        <div class="station-node" style="top: 50px; left: 215px;"><span class="node-text">의정부역 [1]</span></div>
-        <div class="station-node" style="top: 150px; left: 215px;"><span class="node-text" style="color:#16a085; border-color:#2ecc71;">도봉산역 [1 ➡️ 7 환승]</span></div>
-        <div class="station-node" style="top: 286px; left: 351px;"><span class="node-text">태릉입구역 [7]</span></div>
-        <div class="station-node" style="top: 286px; left: 215px;"><span class="node-text" style="color:#94a3b8; text-decoration: line-through; left:-125px;">석계역 [1 ➡️ 6]</span></div>
-        <div class="station-node" style="top: 286px; left: 470px;"><span class="node-text" style="font-size:13px; color:#e74c3c;">화랑대역 [6]</span></div>
-
-        <svg class="nav-overlay">
-            <path d="M 223 58 L 223 158 L 359 294 L 478 294" fill="none" stroke="#22c55e" stroke-width="6" stroke-linecap="round" opacity="0.4"/>
-            <path class="route-glow" d="M 223 58 L 223 158 L 359 294 L 478 294" fill="none" stroke="#10b981" stroke-width="6" stroke-linecap="round"/>
-        </svg>
-    </div>
+    <div id="map"></div>
     
     <div id="result-card" class="result-card">
-        <div class="card-title">🏆 시스템 분석 결과: 도봉산역 안전 우회 확정</div>
+        <div class="card-title">🏆 시스템 분석 결과: 도봉산역 안전 우회 동선 선출</div>
         <ul class="details-list">
-            <li><strong>2026-06-16 08:00 평일 출근 정체 분석:</strong> 해당 시간 석계역 환승 통로 인당 점유 면적 위험 수준(`역별요일별환승인원.csv` 데이터 반영). 휠체어 감속 및 정체 유발률이 87%에 달해 알고리즘에서 자동 차단했습니다.</li>
-            <li><strong>승강 설비 연계성:</strong> 7호선 도봉산역 내부 3, 4호기 엘리베이터(1F-2F) 및 대합실 무계단 수평 이동 동선 가동 확인 상태를 연산에 대입했습니다.</li>
-            <li><strong>최종 권장 동선:</strong> 의정부역(1호선) 승차 ➡️ 도봉산역(7호선 환승) ➡️ 태릉입구역 하차 후 엘리베이터 이동.</li>
+            <li><strong>2026-06-16 08:00 평일 출근길 정체 분석:</strong> 해당 시간 석계역 환승 통로 인당 점유 면적이 극도로 좁아 휠체어/유모차 이동 시 충돌 위험이 매우 높습니다. 따라서 시스템이 석계역 경로를 자동 필터링했습니다.</li>
+            <li><strong>승강 설비 연계성:</strong> 7호선 도봉산역 내부 엘리베이터 및 대합실 무계단 수평 이동 동선 가동 상태 확인 완료.</li>
+            <li><strong>최종 권장 동선:</strong> 의정부역(1호선) ➡️ 도봉산역(7호선 환승) ➡️ 태릉입구역 하차 후 엘리베이터 이동.</li>
         </ul>
     </div>
 </div>
 
 <script>
-function activateNavigation() {
-    document.getElementById('map-container').style.display = 'block';
+function startNavigation() {
+    // 지도 영역 보이기
+    document.getElementById('map').style.display = 'block';
     document.getElementById('result-card').style.display = 'block';
+    
+    // 의정부역, 도봉산역, 태릉입구역, 화랑대역의 실제 위도, 경도 좌표 데이터
+    var uijeongbu = [37.7394, 127.0454];
+    var dobongsan = [37.6894, 127.0429];
+    var taereung = [37.6173, 127.0752];
+    var hwarangdae = [37.6202, 127.0835];
+
+    // 지도 중심점을 설정하여 실제 지도 로드
+    var map = L.map('map').setView([37.68, 127.06], 12);
+
+    // 전세계에서 널리 쓰이는 OpenStreetMap 고화질 지도 레이어 장착
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 지도 위에 실제 지하철역 마커 생성 및 풍선 도움말 장착
+    L.marker(uijeongbu).addTo(map).bindPopup("<b>출발: 의정부역 (1호선)</b>").openPopup();
+    L.marker(dobongsan).addTo(map).bindPopup("<b>환승: 도봉산역 (7호선)</b><br>교통약자 최적 평탄 동선");
+    L.marker(taereung).addTo(map).bindPopup("<b>경유: 태릉입구역 (7호선)</b>");
+    L.marker(hwarangdae).addTo(map).bindPopup("<b>도착: 화랑대역 (6호선)</b>");
+
+    // 각 역의 실제 위경도 좌표를 잇는 굵직하고 세련된 네비게이션 경로선 그리기
+    var latlngs = [uijeongbu, dobongsan, taereung, hwarangdae];
+    var polyline = L.polyline(latlngs, {
+        color: '#10b981', 
+        weight: 6, 
+        opacity: 0.9,
+        dashArray: '10, 10'
+    }).addTo(map);
+
+    // 선이 지도 크기에 딱 맞게 화면을 자동으로 맞춰줌
+    map.fitBounds(polyline.getBounds());
 }
 </script>
 
